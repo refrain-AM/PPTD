@@ -14,20 +14,68 @@ import (
 )
 
 //BGN加密，密文的指数(EMultC)可以是浮点数
+// keyBits 是 q1 与 q2 的长度
+
+func init() {
+	file := "/home/gopath/src/InPPTD/" + "InPPTD" + ".txt"
+	logFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
+	if err != nil {
+		panic(err)
+	}
+	log.SetOutput(logFile) // 将文件设置为log输出的文件
+	log.SetFlags(log.LstdFlags | log.Lshortfile | log.LUTC)
+	return
+}
 
 func main() {
+	//TestInPPTD()
+	Benckmark(5,5,128,20,0.00001)
+
+}
+
+func Benckmark(
+	workerNumber, objectNumber, keyBits, messageBits int,
+	fpPrecision float64,
+) {
+	filename := "/home/gopath/src/normalworkers.csv"
+	sp, cp := InitializationPhase(keyBits, messageBits, fpPrecision)
+	ReportPhase(sp, cp, workerNumber, objectNumber, filename)
+	IterationPhase(sp, cp)
+	log.Println("InPPTD. K =", workerNumber, ", M =", objectNumber,
+		"keyBits =", keyBits, "messageBits =", messageBits, "fpPrecision =",
+		fpPrecision)
+	log.Println("sp.ReportPhaseTime =", sp.ReportPhaseTime, "s")
+	log.Println("cp.ReportPhaseTime =", cp.ReportPhaseTime, "s")
+	log.Println("sp.IterationPhaseTime =", sp.IterationPhaseTime, "s")
+	log.Println("cp.IterationPhaseTime =", cp.IterationPhaseTime, "s")
+}
+
+func TestInPPTD() {
 	workerNumber := 5
 	objectNumber := 5
 	keyBits := 128
-	messageBits := 10
+	messageBits := 20
 	fpPrecision := 0.00001
 	filename := "/home/gopath/src/normalworkers.csv"
-	sp, cp := InitializationPhase(keyBits, messageBits, fpPrecision)
-	ReportPhaseStep1(sp, cp, workerNumber, objectNumber, filename)
-	ReportPhaseStep2(sp, cp)
-	ReportPhaseStep3(cp)
-	IterationPhase(sp, cp)
 
+	sp, cp := InitializationPhase(keyBits, messageBits, fpPrecision)
+	ReportPhase(sp, cp, workerNumber, objectNumber, filename)
+
+	tM := make([]float64, objectNumber, objectNumber)
+	copy(tM, cp.tM)
+	fmt.Println(tM)
+
+	i := 0
+	for true {
+		IterationPhase(sp, cp)
+		i++
+		if convergenceTest(tM, cp.tM, objectNumber, 2) {
+			break
+		}
+		copy(tM, cp.tM)
+		fmt.Println(tM)
+	}
+	fmt.Printf("迭代次数：%d\n", i)
 }
 
 type SP struct {
@@ -44,7 +92,11 @@ type SP struct {
 	ErKM  [][]*bgn.Ciphertext
 	Er2KM [][]*bgn.Ciphertext
 
-	tM []float64 //ground truth
+	tM        []float64 //ground truth
+	wKMinuxaK []float64 //perturbed weight for each worker
+
+	ReportPhaseTime    float64
+	IterationPhaseTime float64
 }
 
 type CP struct {
@@ -64,6 +116,11 @@ type CP struct {
 	Er2KM [][]*bgn.Ciphertext
 
 	tM []float64 //ground truth
+
+	aK []int
+
+	ReportPhaseTime    float64
+	IterationPhaseTime float64
 }
 
 //Initialization Phase 生成密钥
@@ -91,16 +148,26 @@ func InitializationPhase(
 	pk.PrecomputeTables(genG1, genGT)
 
 	sp := &SP{
-		pk:      pk,
-		sk:      sk,
-		keyBits: keyBits,
+		pk:                 pk,
+		sk:                 sk,
+		keyBits:            keyBits,
+		ReportPhaseTime:    0,
+		IterationPhaseTime: 0,
 	}
 
 	cp := &CP{
-		pk:      pk,
-		keyBits: keyBits,
+		pk:                 pk,
+		keyBits:            keyBits,
+		ReportPhaseTime:    0,
+		IterationPhaseTime: 0,
 	}
 	return sp, cp
+}
+
+func ReportPhase(sp *SP, cp *CP, K, M int, filename string) {
+	ReportPhaseStep1(sp, cp, K, M, filename)
+	ReportPhaseStep2(sp, cp)
+	ReportPhaseStep3(cp)
 }
 
 //数据扰动，worker执行
@@ -115,6 +182,10 @@ func ReportPhaseStep1(sp *SP, cp *CP, K, M int, filename string) {
 	sp.r2KM = make([][]float64, K, K)
 	cp.x_KM = make([][]float64, K, K)
 	cp.x_2KM = make([][]float64, K, K)
+
+	cp.aK = make([]int, K, K)
+	sp.wKMinuxaK = make([]float64, K, K) //perturbed weight for each worker
+
 	for k := 0; k < K; k++ {
 		rkM := make([]float64, M, M)
 		r2kM := make([]float64, M, M)
@@ -144,6 +215,9 @@ func ReportPhaseStep1(sp *SP, cp *CP, K, M int, filename string) {
 
 // SP执行
 func ReportPhaseStep2(sp *SP, cp *CP) {
+
+	startTime := time.Now().UnixNano()
+
 	pk := sp.pk
 	K := sp.K
 	M := sp.M
@@ -163,10 +237,17 @@ func ReportPhaseStep2(sp *SP, cp *CP) {
 
 	cp.ErKM = sp.ErKM
 	cp.Er2KM = sp.Er2KM
+
+	endTime := time.Now().UnixNano()
+	sp.ReportPhaseTime += float64(endTime-startTime) / 1e9
+
 }
 
 // CP执行
 func ReportPhaseStep3(cp *CP) {
+
+	startTime := time.Now().UnixNano()
+
 	pk := cp.pk
 	K := cp.K
 	M := cp.M
@@ -183,6 +264,10 @@ func ReportPhaseStep3(cp *CP) {
 		cp.Ex2KM[k] = Ex2kM
 		fmt.Println("ReportPhaseStep3, k =", k)
 	}
+
+	endTime := time.Now().UnixNano()
+	cp.ReportPhaseTime += float64(endTime-startTime) / 1e9
+
 }
 
 func IterationPhase(sp *SP, cp *CP) {
@@ -191,7 +276,12 @@ func IterationPhase(sp *SP, cp *CP) {
 	pk := cp.pk
 	sk := sp.sk
 
+	var startTime, endTime int64
+
 	//TODO Weight Estimation
+
+	startTime = time.Now().UnixNano()
+	// --------------------------------------------------------
 	//TODO PART 1  CP计算
 	//公式9. CP computes the secure distance function
 	EDistKM := make([][]*bgn.Ciphertext, K, K)
@@ -219,42 +309,53 @@ func IterationPhase(sp *SP, cp *CP) {
 		C = pk.EAdd(C, CK[k])
 	}
 
-	aK := make([]int, K, K)
 	//CK2 为 Ck'
 	CK2 := make([]*bgn.Ciphertext, K, K)
 	//CP randomly chooses a random number ak for each worker k
 	for k := 0; k < K; k++ {
 		//TODO ak的选取，要做的更长的话开销是否更大
 		//aK[k]=rand.Intn(62)
-		aK[k] = rand.Intn(cp.keyBits)
-		CK2[k] = pk.EMultC(CK[k], new(big.Float).SetMantExp(big.NewFloat(1), aK[k]))
+		cp.aK[k] = rand.Intn(cp.keyBits)
+		CK2[k] = pk.EMultC(CK[k], new(big.Float).SetMantExp(big.NewFloat(1), cp.aK[k]))
 	}
+	// --------------------------------------------------------
+	endTime = time.Now().UnixNano()
+	cp.IterationPhaseTime += float64(endTime-startTime) / 1e9
+
 	//CP 发送 C 和 Ck' 给 SP
 
+	startTime = time.Now().UnixNano()
+	// --------------------------------------------------------
 	//TODO PART 2  SP计算
 	DCBigFloat := sk.Decrypt(C, pk).PolyEval() //D(C)
 	DCK2BigFloat := make([]*big.Float, K, K)   //D(Ck')
-	wKMinuxaK := make([]float64, K, K)         //perturbed weight for each worker
+
 	for k := 0; k < K; k++ {
 		DCK2BigFloat[k] = sk.Decrypt(CK2[k], pk).PolyEval()
 		quo, _ := new(big.Float).Quo(DCBigFloat, DCK2BigFloat[k]).Float64()
-		wKMinuxaK[k] = math.Log2(quo)
+		sp.wKMinuxaK[k] = math.Log2(quo)
 	}
 
 	//TODO Truth Estimation
 	//To estimate the ground truth, SP first encrypts the perturbed weight(e.g., E(wk − ak))
 	EwKMinuxaK := make([]*bgn.Ciphertext, K, K)
 	for k := 0; k < K; k++ {
-		EwKMinuxaK[k] = pk.Encrypt(pk.NewPlaintext(big.NewFloat(wKMinuxaK[k])))
+		EwKMinuxaK[k] = pk.Encrypt(pk.NewPlaintext(big.NewFloat(sp.wKMinuxaK[k])))
 	}
+	// --------------------------------------------------------
+	endTime = time.Now().UnixNano()
+	sp.IterationPhaseTime += float64(endTime-startTime) / 1e9
+
 	//SP 发送 E(wk − ak) 给 CP
 
+	startTime = time.Now().UnixNano()
+	// --------------------------------------------------------
 	//TODO PART3 CP计算
 	EwK := make([]*bgn.Ciphertext, K, K)
 	//公式13
 	ESUMwk := pk.Encrypt(pk.NewPlaintext(big.NewFloat(0)))
 	for k := 0; k < K; k++ {
-		EwK[k] = pk.EAdd(EwKMinuxaK[k], pk.Encrypt(pk.NewPlaintext(big.NewFloat(float64(aK[k])))))
+		EwK[k] = pk.EAdd(EwKMinuxaK[k], pk.Encrypt(pk.NewPlaintext(big.NewFloat(float64(cp.aK[k])))))
 		ESUMwk = pk.EAdd(ESUMwk, EwK[k])
 	}
 	//公式14
@@ -273,8 +374,14 @@ func IterationPhase(sp *SP, cp *CP) {
 			}
 		}
 	}
+	// --------------------------------------------------------
+	endTime = time.Now().UnixNano()
+	cp.IterationPhaseTime += float64(endTime-startTime) / 1e9
+
 	// CP send E(\sum_{k=1}^K{w_k * x_{m,k}}) 和 E(\sum_{k=1}^K{w_k}) to SP
 
+	startTime = time.Now().UnixNano()
+	// --------------------------------------------------------
 	//TODO PART4 SP计算
 	//公式15 更新 Ground Truth
 	for m := 0; m < M; m++ {
@@ -284,11 +391,52 @@ func IterationPhase(sp *SP, cp *CP) {
 		//fmt.Println(SUMwk.String())
 		sp.tM[m], _ = new(big.Float).Quo(SUMwkxkm, SUMwk).Float64()
 	}
-	fmt.Println(cp.tM)
+	// --------------------------------------------------------
+	endTime = time.Now().UnixNano()
+	sp.IterationPhaseTime += float64(endTime-startTime) / 1e9
 
 }
 
 //TODO Reward Phase
+//task i; Pi is the total rewards for task i.
+func RewardPhase(sp *SP, cp *CP, Pi float64) (rewards []float64) {
+	Si := 0.0
+	K := cp.K
+
+	//-------------------------------------
+	// CP计算
+	for k := 0; k < K; k++ {
+		Si += float64(cp.aK[k])
+	}
+	//-------------------------------------
+
+	//-------------------------------------
+	// SP计算
+	Wi := Si
+	for k := 0; k < K; k++ {
+		Wi += sp.wKMinuxaK[k]
+	}
+	psiK := make([]float64, K, K)
+	for k := 0; k < K; k++ {
+		psiK[k] = sp.wKMinuxaK[k] / Wi * Pi
+	}
+	//-------------------------------------
+
+	//-------------------------------------
+	// CP计算
+	pciK := make([]float64, K, K)
+	for k := 0; k < K; k++ {
+		pciK[k] = float64(cp.aK[k]) / Wi * Pi
+	}
+
+	rewardK := make([]float64, K, K)
+	for k := 0; k < K; k++ {
+		rewardK[k] = psiK[k] + pciK[k]
+	}
+	//-------------------------------------
+
+	return rewardK
+}
 
 // K is the number of workers; M is the number of objects.
 func InitData(K, M int, filename string) (data [][]float64) {
@@ -316,4 +464,15 @@ func Error(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+//检测两数组各元素差异，判断是否收敛
+func convergenceTest(x1 []float64, x2 []float64, objectNumber int, accuracy int) bool {
+	error := 1 / math.Pow10(accuracy)
+	for m := 0; m < objectNumber; m++ {
+		if math.Abs(x1[m]-x2[m]) >= error {
+			return false
+		}
+	}
+	return true
 }
