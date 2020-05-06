@@ -19,8 +19,11 @@ import (
 	// "github.com/Nik-U/pbc"
 )
 
+var gopath = "D:/MyDocuments/Workspace/InPPTD/PPTDGO"
+//var gopath = "/home/gopath"
+
 func init() {
-	file := "/home/gopath/src/L2PPTD/" + "L2PPTD" + ".txt"
+	file := gopath+"/src/L2PPTD/" + "L2PPTD" + ".txt"
 	logFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		panic(err)
@@ -36,8 +39,8 @@ func main() {
 }
 
 func Benckmark(workerNumber, objectNumber, keybit, magnitude int) {
-	filename1 := "/home/gopath/src/normalout1.csv"
-	filename2 := "/home/gopath/src/normalout2.csv"
+	filename1 := gopath+"/src/normalout1.csv"
+	filename2 := gopath+"/src/normalout2.csv"
 	sa, sb := InitializationPhase(workerNumber, objectNumber,
 		filename1, filename2,
 		keybit, magnitude)
@@ -427,8 +430,8 @@ func TestL2PPTD() {
 	objectNumber := 10
 	keybit := 1024
 	magnitude := 10
-	filename1 := "/home/gopath/src/normalout1.csv"
-	filename2 := "/home/gopath/src/normalout2.csv"
+	filename1 := gopath+"/src/normalout1.csv"
+	filename2 := gopath+"/src/normalout2.csv"
 	sa, sb := InitializationPhase(
 		workerNumber, objectNumber,
 		filename1, filename2,

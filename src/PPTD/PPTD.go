@@ -25,8 +25,11 @@ import (
 	// "github.com/Nik-U/pbc"
 )
 
+var gopath = "D:/MyDocuments/Workspace/InPPTD/PPTDGO"
+//var gopath = "/home/gopath"
+
 func init() {
-	file := "/home/gopath/src/PPTD/" +"PPTD"+ ".txt"
+	file := gopath+"/src/PPTD/" +"PPTD"+ ".txt"
 	logFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		panic(err)
@@ -42,7 +45,7 @@ func main() {
 }
 
 func Benchmark(userNumber, objectNumber, publicKeyBitLength, magnitude int) {
-	filename := "/home/gopath/src/normalworkers.csv"
+	filename := gopath+"/src/normalworkers.csv"
 	cloud, userGroup := SystemGen(userNumber, objectNumber, filename, publicKeyBitLength, magnitude)
 
 	cloud.step1()
@@ -391,7 +394,7 @@ func TestPPTD() {
 	objectNumber := 10
 	publicKeyBitLength := 2048
 	magnitude := 10
-	filename := "/home/gopath/src/normalworkers.csv"
+	filename :=gopath+"/src/normalworkers.csv"
 	cloud, userGroup := SystemGen(userNumber, objectNumber, filename, publicKeyBitLength, magnitude)
 	cloud.step1()
 

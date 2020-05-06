@@ -13,11 +13,15 @@ import (
 	"time"
 )
 
+//var gopath = "D:/MyDocuments/Workspace/InPPTD/PPTDGO"
+var gopath = "/home/gopath"
+
 //BGN加密，密文的指数(EMultC)可以是浮点数
 // keyBits 是 q1 与 q2 的长度
 
+
 func init() {
-	file := "/home/gopath/src/InPPTD/" + "InPPTD" + ".txt"
+	file := gopath+"/src/InPPTD/" + "InPPTD" + ".txt"
 	logFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		panic(err)
@@ -29,7 +33,7 @@ func init() {
 
 func main() {
 	//TestInPPTD()
-	Benckmark(5,5,128,20,0.00001)
+	Benckmark(5,5,256,10,0.00001)
 
 }
 
@@ -37,7 +41,7 @@ func Benckmark(
 	workerNumber, objectNumber, keyBits, messageBits int,
 	fpPrecision float64,
 ) {
-	filename := "/home/gopath/src/normalworkers.csv"
+	filename := gopath+"/src/normalworkers.csv"
 	sp, cp := InitializationPhase(keyBits, messageBits, fpPrecision)
 	ReportPhase(sp, cp, workerNumber, objectNumber, filename)
 	IterationPhase(sp, cp)
@@ -56,7 +60,7 @@ func TestInPPTD() {
 	keyBits := 128
 	messageBits := 20
 	fpPrecision := 0.00001
-	filename := "/home/gopath/src/normalworkers.csv"
+	filename := gopath+"/src/normalworkers.csv"
 
 	sp, cp := InitializationPhase(keyBits, messageBits, fpPrecision)
 	ReportPhase(sp, cp, workerNumber, objectNumber, filename)
