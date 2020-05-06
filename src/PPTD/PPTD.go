@@ -25,8 +25,8 @@ import (
 	// "github.com/Nik-U/pbc"
 )
 
-var gopath = "D:/MyDocuments/Workspace/InPPTD/PPTDGO"
-//var gopath = "/home/gopath"
+//var gopath = "D:/MyDocuments/Workspace/InPPTD/PPTDGO"
+var gopath = "/home/gopath"
 
 func init() {
 	file := gopath+"/src/PPTD/" +"PPTD"+ ".txt"
