@@ -7,11 +7,13 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"github.com/sachaservan/paillier"
 	"log"
 	"math"
 	"os"
 	"time"
+
+	"github.com/sachaservan/paillier"
+
 	//"reflect"
 	"strconv"
 	// "io"
@@ -19,11 +21,11 @@ import (
 	// "github.com/Nik-U/pbc"
 )
 
-//var gopath = "D:/MyDocuments/Workspace/InPPTD/PPTDGO"
-var gopath = "/home/gopath"
+var gopath = "D:/MyDocuments/Workspace/InPPTD/PPTDGO"
+//var gopath = "/home/PPTD/src/PPTDGO"
 
 func init() {
-	file := gopath+"/src/L2PPTD/" + "L2PPTD" + ".txt"
+	file := gopath + "/src/L2PPTD/" + "L2PPTD" + ".txt"
 	logFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		panic(err)
@@ -35,17 +37,38 @@ func init() {
 
 func main() {
 	//TestL2PPTD()
-	Benckmark(10, 10, 512, 10)
+	log.Println("--------------------------------")
+	Benchmark(3, 20, 1024, 10)
+	Benchmark(4, 20, 1024, 10)
+	Benchmark(5, 20, 1024, 10)
+	Benchmark(6, 20, 1024, 10)
+	Benchmark(7, 20, 1024, 10)
+	Benchmark(8, 20, 1024, 10)
+	Benchmark(9, 20, 1024, 10)
+	Benchmark(10, 20, 1024, 10)
+
+	log.Println("--------------------------------")
+
+	Benchmark(10, 50, 1024, 10)
+	Benchmark(25, 50, 1024, 10)
+	Benchmark(50, 50, 1024, 10)
+	Benchmark(75, 50, 1024, 10)
+	Benchmark(100, 50, 1024, 10)
+	Benchmark(125, 50, 1024, 10)
+	Benchmark(150, 50, 1024, 10)
+	Benchmark(175, 50, 1024, 10)
+	Benchmark(200, 50, 1024, 10)
+
 }
 
-func Benckmark(workerNumber, objectNumber, keybit, magnitude int) {
-	filename1 := gopath+"/src/normalout1.csv"
-	filename2 := gopath+"/src/normalout2.csv"
+func Benchmark(workerNumber, objectNumber, keybit, magnitude int) {
+	filename1 := gopath + "/src/normalout1.csv"
+	filename2 := gopath + "/src/normalout2.csv"
 	sa, sb := InitializationPhase(workerNumber, objectNumber,
 		filename1, filename2,
 		keybit, magnitude)
 	OneIteration(sa, sb)
-	log.Println("L2PPTD. K =",workerNumber,", M =",objectNumber , "KeyBit =",keybit*2)
+	log.Println("L2PPTD. K =", workerNumber, ", M =", objectNumber, "KeyBit =", keybit*2)
 	log.Println("sa.InitializationPhaseTime=", sa.InitializationPhaseTime, "s")
 	log.Println("sb.InitializationPhaseTime=", sb.InitializationPhaseTime, "s")
 	log.Println("sa.IterationPhaseTime=", sa.IterationPhaseTime, "s")
@@ -430,8 +453,8 @@ func TestL2PPTD() {
 	objectNumber := 10
 	keybit := 1024
 	magnitude := 10
-	filename1 := gopath+"/src/normalout1.csv"
-	filename2 := gopath+"/src/normalout2.csv"
+	filename1 := gopath + "/src/normalout1.csv"
+	filename2 := gopath + "/src/normalout2.csv"
 	sa, sb := InitializationPhase(
 		workerNumber, objectNumber,
 		filename1, filename2,

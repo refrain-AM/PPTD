@@ -11,7 +11,6 @@ import (
 	"crypto/rand"
 	"encoding/csv"
 	"fmt"
-	"github.com/sachaservan/paillier"
 	"log"
 	"math"
 	"math/big"
@@ -20,16 +19,17 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/sachaservan/paillier"
 	//"reflect"
 	// "io"
 	// "github.com/Nik-U/pbc"
 )
 
-//var gopath = "D:/MyDocuments/Workspace/InPPTD/PPTDGO"
-var gopath = "/home/gopath"
+var gopath = "D:/MyDocuments/Workspace/InPPTD/PPTDGO"
+//var gopath = "/home/PPTD/src/PPTDGO"
 
 func init() {
-	file := gopath+"/src/PPTD/" +"PPTD"+ ".txt"
+	file := gopath + "/src/PPTD/" + "PPTD" + ".txt"
 	logFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
 	if err != nil {
 		panic(err)
@@ -41,11 +41,31 @@ func init() {
 
 func main() {
 	//TestPPTD()
-	Benchmark(10, 30, 1024, 10)
+	log.Println("--------------------------------")
+	Benchmark(3, 20, 2048, 10)
+	Benchmark(4, 20, 2048, 10)
+	Benchmark(5, 20, 2048, 10)
+	Benchmark(6, 20, 2048, 10)
+	Benchmark(7, 20, 2048, 10)
+	Benchmark(8, 20, 2048, 10)
+	Benchmark(9, 20, 2048, 10)
+	Benchmark(10, 20, 2048, 10)
+
+	log.Println("--------------------------------")
+
+	Benchmark(10, 50, 2048, 10)
+	Benchmark(25, 50, 2048, 10)
+	Benchmark(50, 50, 2048, 10)
+	Benchmark(75, 50, 2048, 10)
+	Benchmark(100, 50, 2048, 10)
+	Benchmark(125, 50, 2048, 10)
+	Benchmark(150, 50, 2048, 10)
+	Benchmark(175, 50, 2048, 10)
+	Benchmark(200, 50, 2048, 10)
 }
 
 func Benchmark(userNumber, objectNumber, publicKeyBitLength, magnitude int) {
-	filename := gopath+"/src/normalworkers.csv"
+	filename := gopath + "/src/normalworkers.csv"
 	cloud, userGroup := SystemGen(userNumber, objectNumber, filename, publicKeyBitLength, magnitude)
 
 	cloud.step1()
@@ -56,15 +76,15 @@ func Benchmark(userNumber, objectNumber, publicKeyBitLength, magnitude int) {
 	cloud.step4(userGroup)
 	userGroup.step5(cloud)
 	cloud.step6(userGroup)
-	userTimeSum:=0.0
-	log.Println("PPTD. K =",userNumber,", M =",objectNumber , "KeyBit =",publicKeyBitLength)
-	log.Println("cloud 用时",cloud.step4time+cloud.step6time+cloud.secureSumTime,"s")
-	for k:=0;k<userNumber;k++ {
-		userTime:=userGroup.user[k].step3time+userGroup.user[k].step5time+userGroup.user[k].secureSumTime
-		userTimeSum+=userTime
+	userTimeSum := 0.0
+	log.Println("PPTD. K =", userNumber, ", M =", objectNumber, "KeyBit =", publicKeyBitLength)
+	log.Println("cloud 用时", cloud.step4time+cloud.step6time+cloud.secureSumTime, "s", "cloud.secureSumDecryptTime=", cloud.secureSumDecryptTime, "s")
+	for k := 0; k < userNumber; k++ {
+		userTime := userGroup.user[k].step3time + userGroup.user[k].step5time + userGroup.user[k].secureSumTime
+		userTimeSum += userTime
 		//fmt.Println("user",k,"用时",userTime,"s")
 	}
-	log.Println("users平均用时",userTimeSum/float64(userNumber),"s")
+	log.Println("users平均用时", userTimeSum/float64(userNumber), "s")
 
 }
 
@@ -86,9 +106,10 @@ type Cloud struct {
 	//ciphertexts of weighted data
 	EpkRounded_wKxKM [][]*paillier.Ciphertext
 
-	step4time     float64
-	step6time     float64
-	secureSumTime float64
+	step4time            float64
+	step6time            float64
+	secureSumTime        float64
+	secureSumDecryptTime float64
 }
 
 type User struct {
@@ -159,7 +180,7 @@ func SystemGen(
 	publicKeyBitLength, magnitude int,
 ) (
 	cloud *Cloud,
-//user []*User,
+	//user []*User,
 	userGroup *UserGroup,
 ) {
 	// 生成 (p-t)门限 Paillier 加密密钥，并将最后一个分配给 cloud
@@ -181,11 +202,12 @@ func SystemGen(
 		LFloat:     LFloat,
 		LBigFloat:  big.NewFloat(LFloat),
 		//LBigInt:    big.NewInt(int64(LFloat)),
-		EpkRounded_DistK:    make([]*paillier.Ciphertext, K, K),
-		EpkRounded_LogDistK: make([]*paillier.Ciphertext, K, K),
-		step4time:           0,
-		step6time:           0,
-		secureSumTime:       0,
+		EpkRounded_DistK:     make([]*paillier.Ciphertext, K, K),
+		EpkRounded_LogDistK:  make([]*paillier.Ciphertext, K, K),
+		step4time:            0,
+		step6time:            0,
+		secureSumTime:        0,
+		secureSumDecryptTime: 0,
 	}
 	user := make([]*User, K, K)
 	for k := 0; k < K; k++ {
@@ -292,6 +314,8 @@ func (cloud *Cloud) SecureSumProtocolDecryption(
 	cloudStartTime = time.Now().UnixNano()
 
 	partialDecryptionArray[t-1] = cloud.privateKey.Decrypt(encryptedSum.C)
+	cloud.secureSumDecryptTime += float64(time.Now().UnixNano()-cloudStartTime) / 1e9
+
 	var err error
 	sum, err = cloud.privateKey.CombinePartialDecryptions(partialDecryptionArray)
 	Error(err)
@@ -388,13 +412,12 @@ func (cloud *Cloud) step6(userGroup *UserGroup) {
 	}
 }
 
-
 func TestPPTD() {
 	userNumber := 10
 	objectNumber := 10
 	publicKeyBitLength := 2048
 	magnitude := 10
-	filename :=gopath+"/src/normalworkers.csv"
+	filename := gopath + "/src/normalworkers.csv"
 	cloud, userGroup := SystemGen(userNumber, objectNumber, filename, publicKeyBitLength, magnitude)
 	cloud.step1()
 
