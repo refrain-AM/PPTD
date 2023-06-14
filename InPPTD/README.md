@@ -1,0 +1,1 @@
+Kaiping Xue, Bin Zhu, Qingyou Yang, Na Gai, David S.L. Wei, Nenghai Yu, InPPTD: An Lightweight Incentive-based Privacy-Preserving Truth Discovery for Crowd Sensing Systems, IEEE Internet of Things Journal, 8(6): 4305-4316, 2021
